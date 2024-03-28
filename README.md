@@ -9,10 +9,10 @@ The high-level pipeline of SemStamp generation is:
 ### Generation
 1. Fine-tune a robust sentence embedder that encodes semantically similar sentences with sentence embeddings having high cosine similarities.
 2. LSH partitions the embedding space through fixing random hyperplanes and assigning signatures of a vector based on the signs of its dot product with the hyperplanes.
-3. Given input sentence $s_1$, repeat generating sentences $s_t$ until $LSH(s_t) \in \text{valid_mask}(s_{t-1})$, $t=2,...$ and stop when the max_new_tokens is reached. The valid mask is controlled by the LSH signature of $s_{t-1}$.
+3. Given input sentence $s_1$, repeat generating sentences $s_t$ until $LSH(s_t) \in \text{valid}_\text{mask}(s_{t-1})$, $t=2,...$ and stop when the max_new_tokens is reached. The valid mask is controlled by the LSH signature of $s_{t-1}$.
 ### Detection
 1. Attempt to remove sentence watermark through sentence-level paraphrasing.
-2. Detect the sentences to see if $LSH(s_t) \in \text{valid_mask}(s_{t-1})$, $t=2,...$
+2. Detect the sentences to see if $LSH(s_t) \in \text{valid}_\text{mask}(s_{t-1})$, $t=2,...$
 ### Sample usage
 1. create data/ directory and load c4_data: 
     python load_c4.py 

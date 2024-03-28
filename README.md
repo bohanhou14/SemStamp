@@ -73,6 +73,7 @@ Steps 1 and 2 are the same.
 We are exploring a parallel implementation and also vLLM integrations to speedup SemStamp generations.
 
 ## To cite
+```
 @inproceedings{hou-etal-2023-semstamp,
     title = "SemStamp: A Semantic Watermark with Paraphrastic Robustness for Text Generation",
     author = "Hou, Abe Bohan*  and
@@ -88,4 +89,6 @@ We are exploring a parallel implementation and also vLLM integrations to speedup
     year = "2023",
     url = "https://arxiv.org/abs/2310.03991",
 }
+```
+
 

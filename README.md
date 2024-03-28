@@ -60,7 +60,8 @@ Steps 1 and 2 are the same.
 3. produce k-SemStamp generations
 
     ```python build_subset.py data/c4-val --n 1000 
-    python sampling.py --model AbeHou/opt-1.3b-semstamp --embedder output_dir_to_your_embedder --sp_mode kmeans --sp_dim 8 --delta 0.02  ```
+    python sampling.py --model AbeHou/opt-1.3b-semstamp --embedder output_dir_to_your_embedder --sp_mode kmeans --sp_dim 8 --delta 0.02
+    ```
 
 4. detection:
     ```

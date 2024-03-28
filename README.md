@@ -49,7 +49,7 @@ python detection.py path_to_your_generation --detection_mode lsh --sp_dim 3 --em
 **Note that if you use GPU to generate, you must use GPU to detect as well in order for the random seed to be consistent.**
 Note that you are free to change the value of delta for your customized tradeoff of robustness and speed. (Higher delta means more strict rejections, thus more robust and slower. Lower delta is the other way around.)
 
-### k-SemStamp Generation
+## k-SemStamp Generation
 1. Encode a corpus of texts belonging to a specific domain and obtain k-means clusters on the training embeddings
 2. Given input sentence $s_1$, repeat generating sentences $s_t$ until $c(s_t) \in valid(s_{t-1})$, $t=2,...$ and stop when the max_new_tokens is reached. $c(s_t)$ returns the index of the closest cluster to $s_{t}$. The valid mask is controlled by $c(s_{t-1})$.
 ### Detection
@@ -69,6 +69,23 @@ Steps 1 and 2 are the same.
     ```
     
 
-### Future works
+## Future works
 We are exploring a parallel implementation and also vLLM integrations to speedup SemStamp generations.
+
+## To cite
+@inproceedings{hou-etal-2023-semstamp,
+    title = "SemStamp: A Semantic Watermark with Paraphrastic Robustness for Text Generation",
+    author = "Hou, Abe Bohan*  and
+      Zhang, Jingyu*  and
+      He, Tianxing*  and
+      Chuang, Yung-Sung  and
+      Wang, Hongwei  and
+      Shen, Lingfeng and
+      Van Durme, Benjamin and
+      Khashabi, Daniel  and
+      Tsvetkov, Yulia",
+    booktitle = "Annual Conference of the North American Chapter of the Association for Computational Linguistics",
+    year = "2023",
+    url = "https://arxiv.org/abs/2310.03991",
+}
 

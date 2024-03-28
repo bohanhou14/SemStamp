@@ -40,7 +40,8 @@ python build_subset.py data/c4-val --n 1000
 python sampling.py data/c4-val-1000 --model AbeHou/opt-1.3b-semstamp \
     --embedder output_dir_to_your_embedder --sp_mode lsh \ 
     --sp_dim 3 --delta 0.01
-# note: it's recommended to use AbeHou/opt-1.3b-semstamp, which is fine-tuned with cross-entropy loss to favor generations of shorter average sentence length, so that the # watermark is more pronounced.
+# note: it's recommended to use AbeHou/opt-1.3b-semstamp, which is fine-tuned with cross-entropy loss 
+# to favor generations of shorter average sentence length, so that the # watermark is more pronounced.
 # 3. detection
 python detection.py path_to_your_generation --detection_mode lsh --sp_dim 3 --embedder output_dir_to_your_embedder 
 **Note that if you use GPU to generate, you must use GPU to detect as well in order for the random seed to be consistent.**

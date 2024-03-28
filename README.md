@@ -15,7 +15,7 @@ The high-level pipeline of SemStamp generation is:
 2. Detect the sentences to see if $LSH(s_t) \in valid(s_{t-1})$, $t=2,...$
 ### Sample usage
 1. create data/ directory and load c4_data: 
-    python load_c4.py 
+`python load_c4.py`
 2. (Optional) fine-tune the sentence embedder or use a fine-tuned sentence embedder at AbeHou/c4-embedder-semstamp
 - fine-tune procedure: 
 ```

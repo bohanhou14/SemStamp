@@ -45,6 +45,7 @@ python sampling.py data/c4-val-1000 --model AbeHou/opt-1.3b-semstamp \
 # so that the effect of watermarks is more pronounced.
 # 3. detection
 python detection.py path_to_your_generation --detection_mode lsh --sp_dim 3 --embedder output_dir_to_your_embedder 
+
 **Note that if you use GPU to generate, you must use GPU to detect as well in order for the random seed to be consistent.**
 ```
 Note that you are free to change the value of delta for your customized tradeoff of robustness and speed. (Higher delta means more strict rejections, thus more robust and slower. Lower delta is the other way around.)

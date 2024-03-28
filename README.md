@@ -51,16 +51,21 @@ Note that you are free to change the value of delta for your customized tradeoff
 
 ### k-SemStamp Generation
 1. Encode a corpus of texts belonging to a specific domain and obtain k-means clusters on the training embeddings
-2. Given input sentence $s_1$, repeat generating sentences $s_t$ until $c(s_t) \in valid_mask(s_{t-1})$, $t=2,...$ and stop when the max_new_tokens is reached. $c(s_t)$ returns the index of the closest cluster to $s_{t}$. The valid mask is controlled by $c(s_{t-1})$.
+2. Given input sentence $s_1$, repeat generating sentences $s_t$ until $c(s_t) \in valid(s_{t-1})$, $t=2,...$ and stop when the max_new_tokens is reached. $c(s_t)$ returns the index of the closest cluster to $s_{t}$. The valid mask is controlled by $c(s_{t-1})$.
 ### Detection
 The detection procedure is analogous to SemStamp except that $c(s_t)$ is used instead of $LSH(s_t)$
 ### Sample usage
 Steps 1 and 2 are the same.
 3. produce k-SemStamp generations
+    ```
     python build_subset.py data/c4-val --n 1000
     python sampling.py --model AbeHou/opt-1.3b-semstamp --embedder output_dir_to_your_embedder --sp_mode kmeans --sp_dim 8 --delta 0.02
+    ```
 4. detection:
+    ```
     python detection.py path_to_your_generation --detection_mode kmeans --sp_dim 8 --embedder output_dir_to_your_embedder --cc_path to_your_kmeans_clusters
+    ```
+    
 
 ### Future works
 We are exploring a parallel implementation and also vLLM integrations to speedup SemStamp generations.

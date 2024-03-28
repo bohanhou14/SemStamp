@@ -4,8 +4,8 @@ This is the repo for [SemStamp: A Semantic Watermark with Paraphrastic Robustnes
 
 SemStamp is a semantic watermark on Large Language Model(LLM) text generations to allow generated texts to be detected. SemStamp utilizes Locality-Sensitive Hashing (LSH) to partition the high-dimensional embedding space to produce sentence generations with LSH-hashes that follow a pseudo-randomly controlled sequence. During detection time, the algorithm analyzes the LSH-hashes of input sentences to see if they constitute a pseudo-random sequence, subsequently applying a z-test to determine if the text is watermarked. k-SemStamp is a simple yet effective variant of SemStamp, which has a similar setup but uses k-means clustering to partition the embedding space.
 
-The high-level pipeline of SemStamp generation is: 
 ## SemStamp 
+The high-level pipeline of SemStamp is outlined below
 ### Generation
 1. Fine-tune a robust sentence embedder that encodes semantically similar sentences with sentence embeddings having high cosine similarities.
 2. LSH partitions the embedding space through fixing random hyperplanes and assigning signatures of a vector based on the signs of its dot product with the hyperplanes.

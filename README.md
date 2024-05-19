@@ -16,7 +16,7 @@ The high-level pipeline of SemStamp is outlined below
 ### Sample usage
 1. create data/ directory and load c4_data: 
 `python load_c4.py`
-2. (Optional) fine-tune the sentence embedder or use a fine-tuned sentence embedder at AbeHou/c4-embedder-semstamp
+2. (Optional) fine-tune the sentence embedder or use a fine-tuned sentence embedder at AbeHou/SemStamp-booksum-sbert and AbeHou/SemStamp-c4-sbert
 - fine-tune procedure: 
 ```
 # 1. build a smaller-sized huggingface dataset of c4-train dataset with 'text' column (recommended size: 8k) and use the .save_to_disk() API

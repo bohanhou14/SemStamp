@@ -1,3 +1,7 @@
+# Notice [May 24, 2024]:
+This repo is under maintenance - please come back in ~ 3 days!
+
+
 # SemStamp and k-SemStamp
 
 This is the repo for [SemStamp: A Semantic Watermark with Paraphrastic Robustness for Text Generation](https://arxiv.org/abs/2310.03991) and [k-SemStamp: A Clustering-Based Semantic Watermark for Detection of Machine-Generated Text](https://arxiv.org/abs/2402.11399).

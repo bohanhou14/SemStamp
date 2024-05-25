@@ -1,5 +1,4 @@
-# Notice [May 24, 2024]:
-This repo is under maintenance - please come back in ~ 3 days!
+# Notice [May 24, 2024]: This repo is under maintenance - please come back in ~ 3 days!
 
 
 # SemStamp and k-SemStamp

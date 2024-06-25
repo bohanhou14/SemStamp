@@ -1,10 +1,12 @@
 import logging
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from transformers import (
     Trainer,
 )
 from transformers.utils.versions import require_version
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch.nn.functional as F
 
@@ -53,9 +55,12 @@ def cosine_distance_matrix(x, y):
     ).view(x.size(0), y.size(0))
 
 class ParaphraseContrastiveTrainer(Trainer):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, delta, *args, **kwargs):
         self.inaccurate = 0
         self.total = 0
+        self.delta = delta
+        self.sim_loss = nn.MarginRankingLoss(
+            margin=self.delta, reduction='sum')
         super().__init__(*args, **kwargs)
 
     def compute_loss(self, model, inputs, return_outputs=False):
@@ -102,3 +107,39 @@ class ParaphraseContrastiveTrainer(Trainer):
         # print("---------------------------------")
 
         return (loss, text_outputs) if return_outputs else loss
+    
+    # import this to make sure the trainer calls the right loss func during eval and prediction
+    def prediction_step(
+        self,
+        model: nn.Module,
+        inputs: Dict[str, Union[torch.Tensor, Any]],
+        prediction_loss_only: bool,
+        ignore_keys: Optional[List[str]] = None,
+    ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
+        """
+        Perform an evaluation step on `model` using `inputs`.
+
+        Subclass and ovferride to inject custom behavior.
+
+        Args:
+            model (`nn.Module`):
+                The model to evaluate.
+            inputs (`Dict[str, Union[torch.Tensor, Any]]`):
+                The inputs and targets of the model.
+
+                The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
+                argument `labels`. Check your model's documentation for all accepted arguments.
+            prediction_loss_only (`bool`):
+                Whether or not to return the loss only.
+            ignore_keys (`List[str]`, *optional*):
+                A list of keys in the output of your model (if it is a dictionary) that should be ignored when
+                gathering predictions.
+
+        Return:
+            Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]: A tuple with the loss,
+            logits and labels (each being optional).
+        """
+        with torch.no_grad():
+            inputs = {k: v.to(model.device) for k, v in inputs.items()}
+            loss = self.compute_loss(model, inputs)
+        return (loss, None, None)

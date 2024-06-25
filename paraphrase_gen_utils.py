@@ -1,5 +1,6 @@
 from collections import Counter
 import openai
+import backoff
 import torch
 import re
 from tqdm import trange
@@ -133,7 +134,7 @@ def gen_bigram_prompt(sent, context, num_beams):
   prompt = f'''Previous context: {context} \n Paraphrase in {num_beams} different ways and return a numbered list : {sent}'''
   return prompt
   
-@backoff.on_exception(backoff.expo, openai.error.RateLimitError)
+@backoff.on_exception(backoff.expo, openai.RateLimitError)
 def query_openai(prompt):
   while True:
     try:
@@ -151,13 +152,13 @@ def query_openai(prompt):
         frequency_penalty=0,
         presence_penalty=0
       )
-    except openai.error.APIError:
+    except openai.APIError:
       continue
     break
   return response.choices[0].message.content
 
 # use long context
-@backoff.on_exception(backoff.expo, openai.error.RateLimitError)
+@backoff.on_exception(backoff.expo, openai.RateLimitError)
 def query_openai_bigram(prompt):
   while True:
     try:
@@ -175,7 +176,7 @@ def query_openai_bigram(prompt):
         frequency_penalty=0,
         presence_penalty=0
       )
-    except openai.error.APIError:
+    except openai.APIError:
       continue
     break
   return response.choices[0].message.content

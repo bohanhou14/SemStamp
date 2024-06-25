@@ -7,7 +7,7 @@ import torch
 import pickle
 from transformers import AutoTokenizer
 # from dipper import DipperParaphraser
-from paraphrase_gen_utils import accept_by_bigram_overlap, accept_by_unigram_overlap, SParrot, query_openai, query_openai_bigram, gen_prompt, gen_bigram_prompt, extract_list   
+from paraphrase_gen_utils import accept_by_bigram_overlap, SParrot, query_openai, query_openai_bigram, gen_prompt, gen_bigram_prompt, extract_list   
 from sampling_utils import well_formed_sentence
 
 device = 'cuda' if torch.cuda.is_available() else "cpu"
@@ -19,6 +19,7 @@ def pegasus_paraphrase(texts,
                        device='cuda', 
                        num_beams = 10, 
                        temp=2, 
+                       bsz=-1,
                        bigram=False, 
                        bert_threshold=0.03
                        ):
@@ -35,10 +36,13 @@ def pegasus_paraphrase(texts,
         '''
         batch = paraphraser_tokenizer(
             sents, truncation=True, padding='longest', return_tensors="pt", max_length=60).to(device)
+        
         paraphrased_ids = paraphraser.generate(
             **batch, max_length=60, num_beams=num_beams, num_return_sequences=num_beams, temperature=temp, repetition_penalty=1.03)
-        paraphrased = paraphraser_tokenizer.batch_decode(
-            paraphrased_ids, skip_special_tokens=True)
+        # batch decode and return the first one
+        paraphrased = [paraphraser_tokenizer.decode(paraphrased_ids[i*num_beams], skip_special_tokens=True) for i in range(len(paraphrased_ids) // num_beams)]       
+            # breakpoint()    
+        
         return paraphrased
     
     # dataset has to be a text list
@@ -48,15 +52,22 @@ def pegasus_paraphrase(texts,
         sents.extend(sent_list)
         data_len.append(len(sent_list))
     paras = []
-    
-    for sent in tqdm(sents):
-        paraphrased = paraphrase(sent)
-        paraphrased = [well_formed_sentence(para) for para in paraphrased]
-        if bigram:
-            para = accept_by_bigram_overlap(sent, paraphrased, tokenizer, bert_threshold)
-        else: 
-            para = paraphrased[0]
-        paras.append(para)
+
+    if bsz != -1:
+        batched_sents = [sents[i:i+bsz] for i in range(0, len(sents), bsz)]
+        for batch in tqdm(batched_sents, desc="Paraphrasing"):
+            paraphrased = paraphrase(batch)
+            paras.extend(paraphrased)
+
+    else:
+        for sent in tqdm(sents):
+            paraphrased = paraphrase([sent])
+            paraphrased = [well_formed_sentence(para) for para in paraphrased]
+            if bigram:
+                para = accept_by_bigram_overlap(sent, paraphrased, tokenizer, bert_threshold)
+            else: 
+                para = paraphrased[0]
+            paras.append(para)
     
     start_pos = 0
     output = []
@@ -72,7 +83,7 @@ def pegasus_paraphrase(texts,
     new_dataset.save_to_disk(name)
     return output
 
-def parrot_paraphrase(parrot, texts, tokenizer, num_beams=10, bigram=False, save_to_disk=True, avg_sent_len=20, save_by_sents=False, bert_threshold=0.03, unigram = False):
+def parrot_paraphrase(parrot, texts, tokenizer, num_beams=10, bigram=False, save_to_disk=True, avg_sent_len=20, save_by_sents=False, bert_threshold=0.03):
     # modified parrot source code to have the num_beams argument
     def paraphrase(sent):
         para_phrases = parrot.augment(input_phrase=sent,
@@ -100,8 +111,6 @@ def parrot_paraphrase(parrot, texts, tokenizer, num_beams=10, bigram=False, save
         total_paraphrased.append(paraphrased)
         if bigram:
             para = accept_by_bigram_overlap(sent, paraphrased, tokenizer, bert_threshold=bert_threshold)
-        else:
-            para = accept_by_unigram_overlap(sent, paraphrased, tokenizer, bert_threshold=bert_threshold)
         paras.append(para)
     start_pos = 0
     output = []
@@ -172,6 +181,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('data_path', type=str)
     parser.add_argument('--model_path', type=str, default='facebook/opt-1.3b')
+    parser.add_argument('--bsz', type=int, default=-1)
     parser.add_argument('--paraphraser', type=str,
                         default="pegasus", choices=['pegasus', 
                                                     'parrot', 
@@ -181,11 +191,11 @@ if __name__ == '__main__':
                                                     'openai-bigram'])
     parser.add_argument('--temp', type=float, default=2.0, help='decode temperature')
     parser.add_argument('--bert_threshold', type=float, default=0.0, help='threshold for bert similarity between original and paraphrased')
-    parser.add_argument('--num_beams', type=int, default=25, help='number of beams for beam-search')
+    parser.add_argument('--num_beams', type=int, default=10, help='number of beams for beam-search')
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(
-        args.model_path, local_files_only=True)
+        args.model_path)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     args = parser.parse_args()
 
@@ -203,7 +213,7 @@ if __name__ == '__main__':
     elif args.paraphraser == 'pegasus-bigram':
         pegasus_paraphrase(texts, tokenizer, bigram=True, num_beams=args.num_beams, bert_threshold=args.bert_threshold)
     elif args.paraphraser == 'pegasus':
-        pegasus_paraphrase(texts, tokenizer, num_beams = args.num_beams, bert_threshold=args.bert_threshold)
+        pegasus_paraphrase(texts, tokenizer, num_beams = args.num_beams, bert_threshold=args.bert_threshold, bsz=args.bsz)
     elif args.paraphraser == 'openai':
         new_texts, paras = paraphrase_openai(texts, args.num_beams, bigram=False)
     elif args.paraphraser == 'openai-bigram':

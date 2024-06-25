@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import os
 device = "cuda" if torch.cuda.is_available() else "cpu"
 rng = torch.Generator(device)
-scorer = BERTScorer(model_type = "models/deberta-xlarge-mnli", rescale_with_baseline=True, device=device, lang = "en")
+scorer = BERTScorer(model_type = "microsoft/deberta-xlarge-mnli", rescale_with_baseline=True, device=device, lang = "en")
 
 def run_bert_score(gen_sents, para_sents):
     P, R, F1 = scorer.score(gen_sents, para_sents)

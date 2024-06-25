@@ -47,7 +47,7 @@ from transformers.trainer_utils import (
 )
 from transformers.utils.versions import require_version
 
-from SemStamp.contrastive_trainer import ParaphraseContrastiveTrainer
+from contrastive_trainer import ParaphraseContrastiveTrainer
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -316,6 +316,12 @@ def main():
     ### important ###
     def preprocess_function(examples):
         # Tokenize the texts
+        if type(examples['text'][0]) == list:
+            examples['text'] = [' '.join(x) for x in examples['text']]
+        if type(examples['para_text'][0]) == list:
+            print(examples['para_text'])
+            examples['para_text'] = [' '.join(x) for x in examples['para_text']]
+
         text_res = tokenizer(
             examples["text"],
             padding=padding,
@@ -341,20 +347,15 @@ def main():
             max_train_samples = min(len(train_dataset), data_args.max_train_samples)
             train_dataset = train_dataset.select(range(max_train_samples))
         with training_args.main_process_first(desc="train dataset map pre-processing"):
-            train_dataset = train_dataset.map(
-                lambda example, idx: {
-                    'text_unique_id': idx
-                },
-                with_indices = True
-            )
+            print(train_dataset)
             train_dataset = train_dataset.map(
                 preprocess_function,
                 batched=True,
                 load_from_cache_file=not data_args.overwrite_cache,
                 desc="Running tokenizer on train dataset",
             )
-            # print(train_dataset[17313]['text_input_ids'])
-        print(train_dataset)
+            
+        
         # Log a few random samples from the training set:
         for index in random.sample(range(len(train_dataset)), 3):
             logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
@@ -366,12 +367,6 @@ def main():
         with training_args.main_process_first(
             desc="validation dataset map pre-processing"
         ):
-            eval_dataset = eval_dataset.map(
-                lambda example, idx: {
-                    'text_unique_id': idx
-                },
-                with_indices = True
-            )
             eval_dataset = eval_dataset.map(
                 preprocess_function,
                 batched=True,
@@ -388,12 +383,7 @@ def main():
         with training_args.main_process_first(
             desc="prediction dataset map pre-processing"
         ):
-            predict_dataset = predict_dataset.map(
-                lambda example, idx: {
-                    'text_unique_id': idx
-                },
-                with_indices = True
-            )
+
             predict_dataset = predict_dataset.map(
                 preprocess_function,
                 batched=True,
@@ -419,8 +409,6 @@ def main():
             tokenizer=tokenizer,
             data_collator=data_collator,
             delta=data_args.delta,
-            dataset_path=data_args.dataset_path,
-            lmbd=data_args.lmbd,
         )
     else:
         raise NotImplementedError
@@ -451,7 +439,6 @@ def main():
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
         metrics = trainer.evaluate(eval_dataset=eval_dataset)
-
         max_eval_samples = (
             data_args.max_eval_samples
             if data_args.max_eval_samples is not None

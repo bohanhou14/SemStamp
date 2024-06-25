@@ -7,11 +7,17 @@ from copy import deepcopy
 from scipy.spatial.distance import hamming, cosine
 from nearpy.hashes import RandomBinaryProjections
 from transformers import BertTokenizer, BertForSequenceClassification, BertModel
-from utils.batched import batched
 import numpy as np
 from typing import List, Tuple, Callable, Optional, Iterator
 global Device
 
+def batched(iterable, n, total=None):
+    l = len(iterable)
+    if total is not None:
+        assert l == total
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
+    
 
 class LSHModel:
     def __init__(self, device, batch_size, lsh_dim):

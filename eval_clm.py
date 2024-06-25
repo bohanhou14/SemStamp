@@ -12,7 +12,6 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForMaskedLM
 import numpy as np
 import math
-import natsort
 from torch.nn.functional import log_softmax
 from datasets import load_from_disk
 # from bart_score import BARTScorerS

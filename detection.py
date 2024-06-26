@@ -31,6 +31,7 @@ if __name__ == '__main__':
     args = parse_args()
     dataset = load_from_disk(args.dataset_path)
     gens = dataset['text']
+    paras = None
     if 'para_text' in dataset.column_names:
         paras = dataset['para_text']
     human_texts = load_from_disk(args.human_text)['text'][:len(gens)]
@@ -41,8 +42,9 @@ if __name__ == '__main__':
         cluster_centers = torch.load(args.cc_path)
         embedder = SentenceTransformer(args.embedder)
         for i in trange(0, len(gens), 1, desc='kmeans_detection'):
-            gen_sents = gens[i]
-            para_sents = paras[i]
+            gen_sents = gens[i] if type(gens[i]) == list else sent_tokenize(gens[i])
+            if paras != None:
+                para_sents = paras[i] if type(paras[i]) == list else sent_tokenize(paras[i])
             z_score = detect_kmeans(sents=gen_sents, embedder=embedder, lmbd=args.lmbd,
                                     k_dim=args.sp_dim, cluster_centers=cluster_centers)
             para_score = detect_kmeans(
@@ -61,8 +63,9 @@ if __name__ == '__main__':
         lsh_model = lsh_model_class(
             lsh_model_path=args.embedder, device='cuda', batch_size=1, lsh_dim=args.sp_dim, sbert_type='base')
         for i in trange(0, len(gens), 1):
-            text_sents = gens[i]
-            para_sents = paras[i]
+            text_sents = gens[i] if type(gens[i]) == list else sent_tokenize(gens[i])
+            if paras != None:
+                para_sents = paras[i] if type(paras[i]) == list else sent_tokenize(paras[i])
             z_score = detect_lsh(sents=text_sents, lsh_model=lsh_model,
                                  lmbd=args.lmbd, lsh_dim=args.sp_dim)
             para_z_score = detect_lsh(

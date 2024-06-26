@@ -126,4 +126,4 @@ def lsh_reject_completion(
             sent_end_criteria.update(text)
             if (len(text_ids[0]) - prompt_length) >= gen_config.max_new_tokens-1:
                 break
-    return text, total_trials
+    return text

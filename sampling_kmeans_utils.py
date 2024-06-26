@@ -11,7 +11,7 @@ from transformers import StoppingCriteriaList
 from collections import defaultdict
 import pickle
 from tqdm import trange
-from kmeans_pytorch import kmeans, kmeans_predict  # maybe faiss
+from kmeans_pytorch import *  # maybe faiss
 import sampling_utils
 from sampling_utils import SentenceEndCriteria, gen_sent
 
@@ -19,6 +19,39 @@ rng = sampling_utils.rng
 MAX_TRIALS = sampling_utils.MAX_TRIALS
 hash_key = sampling_utils.hash_key
 
+def kmeans_predict(
+        X,
+        cluster_centers,
+        distance='euclidean',
+        device=torch.device('cpu')
+):
+    """
+    predict using cluster centers
+    :param X: (torch.tensor) matrix
+    :param cluster_centers: (torch.tensor) cluster centers
+    :param distance: (str) distance [options: 'euclidean', 'cosine'] [default: 'euclidean']
+    :param device: (torch.device) device [default: 'cpu']
+    :return: (torch.tensor) cluster ids
+    """
+    print(f'predicting on {device}..')
+
+    if distance == 'euclidean':
+        pairwise_distance_function = pairwise_distance
+    elif distance == 'cosine':
+        pairwise_distance_function = pairwise_cosine
+    else:
+        raise NotImplementedError
+
+    # convert to float
+    X = X.float()
+
+    # transfer to device
+    X = X.to(device)
+
+    dis = pairwise_distance_function(X, cluster_centers)
+    choice_cluster = torch.argmin(dis, dim=-1)
+
+    return choice_cluster.cpu()
 
 def update_pickle(name, input_to_embed):
     with open(name, 'rb') as f:
@@ -61,8 +94,9 @@ def embed_gen_list(dataset_path, embedder_path, load_batch_size=10000, encode_ba
                 f.close()
             del embeds; embeds = defaultdict()
     # after all dic updates, load the rest < load_batch_size data
-    embeds = dict(embeds)
-    if (len(embeds) > 0):
+    if (len(sent_embeds) > 0):
+        embeds['text'] = sent_embeds
+        embeds = dict(embeds)
         if initial_load == True:
             update_pickle(name, embeds)
         else:
@@ -187,7 +221,7 @@ def kmeans_reject_completion(
             sent_end_criteria.update(text)
             if (len(text_ids[0]) - prompt_length) >= gen_config.max_new_tokens-1:
                 break
-    return text, total_trials
+    return text
 
 
 def pairwise_cosine(data1, data2, device=torch.device('cpu')):

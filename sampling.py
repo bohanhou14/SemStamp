@@ -30,6 +30,8 @@ def parse_args():
     parser.add_argument('--len_prompt', '-l', default=32,
                         help='MAX length of prompt')
     parser.add_argument('--max_new_tokens', type=int, default=205)
+    parser.add_argument('--rep_p', type=int, default=1.05)
+
     parser.add_argument('--min_new_tokens', type=int, default=195)
     parser.add_argument('--lmbd', type=float, default=0.25,
                         help='ratio of valid sentences')
@@ -37,6 +39,7 @@ def parse_args():
                         help='logit augmentation for baseline or margin size for lsh and kmeans')
     parser.add_argument('--sp_mode', type=str,
                         choices=['lsh', 'kmeans'])
+    parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--sp_dim', type=int, help='number of partitions in the embedding space. default 3 for semstamp and 8 for k-semstamp')
     parser.add_argument('--embed_path', type=str,
                         help='path to precomputed embed for training kmeans')
@@ -79,7 +82,7 @@ if __name__ == '__main__':
     )
 
     name = os.path.join(
-        folder_name, f"lmbd={args.lmbd}-{args.sp_mode}-{args.delta}-{args.sp_dim}-len={args.min_new_tokens}-{args.max_new_tokens}-seed={args.seed_scheme}-rep_p={args.rep_p}")
+        folder_name, f"lmbd={args.lmbd}-{args.sp_mode}-{args.delta}-{args.sp_dim}-len={args.min_new_tokens}-{args.max_new_tokens}-rep_p={args.rep_p}")
     
     if args.sp_mode == "lsh":
         lsh_model = SBERTLSHModel(lsh_model_path=args.embedder,

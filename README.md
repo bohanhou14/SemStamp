@@ -1,13 +1,38 @@
-# The repo is back up. Feel free to shoot further inquiries to bhou4@jhu.edu or submit an issue
+# Official Repo for SemStamp (NAACL24) and k-SemStamp (ACL24)
 
-# Installation
+## To cite
+```
+@inproceedings{hou-etal-2023-semstamp,
+    title = "SemStamp: A Semantic Watermark with Paraphrastic Robustness for Text Generation",
+    author = "Hou, Abe Bohan*  and
+      Zhang, Jingyu*  and
+      He, Tianxing*  and
+      Chuang, Yung-Sung  and
+      Wang, Hongwei  and
+      Shen, Lingfeng and
+      Van Durme, Benjamin and
+      Khashabi, Daniel  and
+      Tsvetkov, Yulia",
+    booktitle = "Annual Conference of the North American Chapter of the Association for Computational Linguistics",
+    year = "2023",
+    url = "https://arxiv.org/abs/2310.03991",
+}
+
+@article{hou-etal-2024-ksemstamp,
+  title="k-SemStamp: A Clustering-Based Semantic Watermark for Detection of Machine-Generated Text.",
+  author= "Hou, Abe Bohan and Zhang, Jingyu and Wang, Yichen and Khashabi, Daniel and He, Tianxing",
+  url="https://arXiv.org/abs/2402.11399"
+}
+```
+
+## Installation
 (Recommended) create a virtual environment, and then:
 ```
 pip install -r requirements.txt
 ```
 
 
-# SemStamp and k-SemStamp
+## SemStamp and k-SemStamp
 
 This is the repo for [SemStamp: A Semantic Watermark with Paraphrastic Robustness for Text Generation](https://arxiv.org/abs/2310.03991) (Accepted to NAACL 24) and [k-SemStamp: A Clustering-Based Semantic Watermark for Detection of Machine-Generated Text](https://arxiv.org/abs/2402.11399) (Accepted to ACL 24).
 
@@ -81,28 +106,5 @@ Steps 1 and 2 are the same.
 ## Future works
 We are exploring a parallel implementation and also vLLM integrations to speedup SemStamp generations.
 
-## To cite
-```
-@inproceedings{hou-etal-2023-semstamp,
-    title = "SemStamp: A Semantic Watermark with Paraphrastic Robustness for Text Generation",
-    author = "Hou, Abe Bohan*  and
-      Zhang, Jingyu*  and
-      He, Tianxing*  and
-      Chuang, Yung-Sung  and
-      Wang, Hongwei  and
-      Shen, Lingfeng and
-      Van Durme, Benjamin and
-      Khashabi, Daniel  and
-      Tsvetkov, Yulia",
-    booktitle = "Annual Conference of the North American Chapter of the Association for Computational Linguistics",
-    year = "2023",
-    url = "https://arxiv.org/abs/2310.03991",
-}
 
-@article{hou-etal-2024-ksemstamp,
-  title="k-SemStamp: A Clustering-Based Semantic Watermark for Detection of Machine-Generated Text.",
-  author= "Hou, Abe Bohan and Zhang, Jingyu and Wang, Yichen and Khashabi, Daniel and He, Tianxing",
-  url="https://arXiv.org/abs/2402.11399"
-}
-```
 

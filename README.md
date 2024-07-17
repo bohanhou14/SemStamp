@@ -1,6 +1,6 @@
 # Official Repo for SemStamp (NAACL24) and k-SemStamp (ACL24)
 
-## To cite
+To cite
 ```
 @inproceedings{hou-etal-2023-semstamp,
     title = "SemStamp: A Semantic Watermark with Paraphrastic Robustness for Text Generation",

@@ -18,11 +18,26 @@ To cite
     url = "https://arxiv.org/abs/2310.03991",
 }
 
-@article{hou-etal-2024-ksemstamp,
-  title="k-SemStamp: A Clustering-Based Semantic Watermark for Detection of Machine-Generated Text.",
-  author= "Hou, Abe Bohan and Zhang, Jingyu and Wang, Yichen and Khashabi, Daniel and He, Tianxing",
-  url="https://arXiv.org/abs/2402.11399"
+@inproceedings{hou-etal-2024-k,
+    title = "k-{S}em{S}tamp: A Clustering-Based Semantic Watermark for Detection of Machine-Generated Text",
+    author = "Hou, Abe  and
+      Zhang, Jingyu  and
+      Wang, Yichen  and
+      Khashabi, Daniel  and
+      He, Tianxing",
+    editor = "Ku, Lun-Wei  and
+      Martins, Andre  and
+      Srikumar, Vivek",
+    booktitle = "Findings of the Association for Computational Linguistics: ACL 2024",
+    month = aug,
+    year = "2024",
+    address = "Bangkok, Thailand",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2024.findings-acl.98",
+    doi = "10.18653/v1/2024.findings-acl.98",
+    pages = "1706--1715",
 }
+
 ```
 
 ## Installation

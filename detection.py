@@ -16,6 +16,7 @@ from detection_utils import detect_kmeans, detect_lsh, run_bert_score, evaluate_
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_path', help='hf dataset containing text and para_text columns')
+    parser.add_argument('--human_text', help='hf dataset containing text column', default="data/c4-human")
     parser.add_argument('--detection_mode', choices=['kmeans', 'lsh'], help='detection mode. lsh for semstamp and kmeans for k-semstamp')
     parser.add_argument('--cc_path', type=str, help='path to cluster centers')
     parser.add_argument('--embedder', type=str, help='sentence embedder')
@@ -92,9 +93,10 @@ if __name__ == '__main__':
 
     results_path = os.path.join(
         args.dataset_path, f"results.csv")
+    print("Evaluating z-scores...")
     auroc, fpr1, fpr5 = evaluate_z_scores(
-        args, z_scores, para_scores, human_scores, args.dataset_path)
-    
+        z_scores, para_scores, human_scores, args.dataset_path)
+    print("Evaluating bert score...")
     gen_sents, para_sents = flatten_gens_and_paras(gens, paras)
     bert_score = run_bert_score(gen_sents, para_sents)
     metrics = [f"{auroc:.3f}", f"{fpr1:.3f}", f"{fpr5:.3f}", f"{bert_score:.3f}"]

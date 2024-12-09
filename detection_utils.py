@@ -40,20 +40,20 @@ def detect_kmeans(sents, embedder, lmbd, k_dim, cluster_centers):
     curr_cluster_id = get_cluster_id(
         sents[0], embedder=embedder, cluster_centers=cluster_centers)
     cluster_mask = get_cluster_mask(curr_cluster_id, k_dim, lmbd)
-    print(f"Prompt: {sents[0]}")
+    # print(f"Prompt: {sents[0]}")
     for i in range(1, n_sent):
         curr_cluster_id = get_cluster_id(
             sents[i], embedder=embedder, cluster_centers=cluster_centers)
-        print(f'sentence {i}: {sents[i]}')
-        print(f'k-means index in accept_mask: {curr_cluster_id in cluster_mask}')
-        print(f'curr_cluster_id: {curr_cluster_id}')
+        # print(f'sentence {i}: {sents[i]}')
+        # print(f'k-means index in accept_mask: {curr_cluster_id in cluster_mask}')
+        # print(f'curr_cluster_id: {curr_cluster_id}')
         if curr_cluster_id in cluster_mask:
             n_watermark += 1
         cluster_mask = get_cluster_mask(curr_cluster_id, k_dim, lmbd)
     n_test_sent = n_sent - 1  # exclude the prompt
     num = n_watermark - lmbd * (n_test_sent)
     denom = np.sqrt((n_test_sent) * lmbd * (1-lmbd))
-    print(f'n_watermark: {n_watermark}, n_test_sent: {n_test_sent}')
+    # print(f'n_watermark: {n_watermark}, n_test_sent: {n_test_sent}')
     return num / denom
 
 def detect_lsh(sents, lsh_model, lmbd, lsh_dim, cutoff=None):

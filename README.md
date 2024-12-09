@@ -46,6 +46,11 @@ To cite
 pip install -r requirements.txt
 ```
 
+(MANDATORY) install punkt
+```
+python install_punkt.py
+```
+
 
 ## SemStamp and k-SemStamp
 
@@ -63,7 +68,7 @@ The high-level pipeline of SemStamp is outlined below
 1. Attempt to remove sentence watermark through sentence-level paraphrasing.
 2. Detect the sentences to see if $LSH(s_t) \in valid(s_{t-1})$, $t=2,...$
 ### Sample usage
-1. create data/ directory and load c4_data: 
+1. create data/ directory and load c4_data, which would also create the human subset for evaluation: 
 `python load_c4.py`
 2. (Optional) fine-tune the sentence embedder or use a fine-tuned sentence embedder at AbeHou/SemStamp-booksum-sbert and AbeHou/SemStamp-c4-sbert
 - fine-tune procedure: 
@@ -87,13 +92,15 @@ python finetune_embedder.py --model_name_or_path all-mpnet-base-v2 \
 python build_subset.py data/c4-val --n 1000
 # 2. sample
 python sampling.py data/c4-val-1000 --model AbeHou/opt-1.3b-semstamp \
-    --embedder output_dir_to_your_embedder --sp_mode lsh \ 
-    --sp_dim 3 --delta 0.01
+    --embedder OUTPUT_DIR_TO_YOUR_EMBEDDER --sp_mode lsh \
+    --sp_dim 3 --delta 0.02
 # note: it's recommended to use AbeHou/opt-1.3b-semstamp, which is fine-tuned with cross-entropy loss 
 # to favor generations of shorter average sentence length, 
 # so that the effect of watermarks is more pronounced.
-# 3. detection
-python detection.py path_to_your_generation --detection_mode lsh --sp_dim 3 --embedder output_dir_to_your_embedder 
+# 3. paraphrase
+python paraphrase_gen.py PATH_TO_GENERATED_DATA --model_path AbeHou/opt-1.3b-semstamp
+# 4. detection
+python detection.py PATH_TO_PARAPHRASED_DATA --detection_mode lsh --sp_dim 3 --embedder OUTPUT_DIR_TO_YOUR_EMBEDDER
 ```
 **Note that if you use GPU to generate, you must use GPU to detect as well in order for the random seed to be consistent.**
 Note that you are free to change the value of delta for your customized tradeoff of robustness and speed. (Higher delta means more strict rejections, thus more robust and slower. Lower delta is the other way around.)
@@ -106,20 +113,31 @@ The detection procedure is analogous to SemStamp except that $c(s_t)$ is used in
 ### Sample usage
 Steps 1 and 2 are the same.
 
-3. produce k-SemStamp generations
+3. generate sentence embeddings to train kmeans clusters (multi-GPU supported).
+  ```
+  python sampling_kmeans_utils.py data/c4-train AbeHou/SemStamp-c4-sbert 8
+  ```
 
-    ```python build_subset.py data/c4-val --n 1000 
-    python sampling.py --model AbeHou/opt-1.3b-semstamp --embedder output_dir_to_your_embedder --sp_mode kmeans --sp_dim 8 --delta 0.02
-    ```
+4. produce k-SemStamp generations. 
+  ```python build_subset.py data/c4-val --n 1000 
+  python sampling.py data/c4-val-1000 --model AbeHou/opt-1.3b-semstamp --embedder AbeHou/SemStamp-c4-sbert --sp_mode kmeans --sp_dim 8 --delta 0.02 \
+    --cc_path data/c4-train/cc.pt
+  ```
 
-4. detection:
+5. detection:
     ```
     python detection.py path_to_your_generation --detection_mode kmeans --sp_dim 8 --embedder output_dir_to_your_embedder --cc_path to_your_kmeans_clusters
     ```
+    Example usage to replicate results in k-SemStamp paper:
+    ```
+    python detection.py semstamp-data/c4-ksemstamp-pegasus/bigram=False --detection_mode kmeans --sp_dim 8 --embedder AbeHou/SemStamp-c4-sbert --cc_path centroids/c4-cluster_8_centers.pt
+    ```
     
 
-## Future works
-We are exploring a parallel implementation and also vLLM integrations to speedup SemStamp generations.
+## Updates (Dec 7 2024)
+1. SemStamp and k-SemStamp now both support multi-GPU implementations.
+2. Added more instructions to clarify usage
+3. Integrated data repository with the original data from the paper.
 
 
 

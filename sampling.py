@@ -1,147 +1,144 @@
-'''
-produce model generation
-'''
 import pprint
 import argparse
 import os
 import sys
+import torch.multiprocessing as mp
 from datasets import load_from_disk, Dataset
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from sbert_lsh_model import SBERTLSHModel
 from sentence_transformers import SentenceTransformer
+from multiprocessing import Process, Queue
 import numpy as np
 from nltk.tokenize import sent_tokenize
 from sampling_utils import extract_prompt_from_text
 from sampling_lsh_utils import lsh_reject_completion
-from sampling_kmeans_utils import embed_gen_list, get_cluster_centers, kmeans_reject_completion, load_embeds
+from sampling_kmeans_utils import kmeans_reject_completion, load_embeds
 
 PUNCTS = '.,!?'
-
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'data', type=str, help='path to huggingface dataset that has a column "text"')
+        'data', type=str, help='Path to Hugging Face dataset that has a column "text".')
     parser.add_argument(
-        '--model', type=str, help='str model name to generate continuation. huggingface/openai', default="facebook/opt-1.3b")
+        '--model', type=str, help='Model name to generate continuation. HuggingFace/OpenAI.', default="facebook/opt-1.3b")
     parser.add_argument(
-        '--embedder', type=str, help='str model name to embed sentences')
-    parser.add_argument('--len_prompt', '-l', default=32,
-                        help='MAX length of prompt')
-    parser.add_argument('--max_new_tokens', type=int, default=205)
-    parser.add_argument('--rep_p', type=int, default=1.05)
-
-    parser.add_argument('--min_new_tokens', type=int, default=195)
+        '--embedder', type=str, help='Model name to embed sentences.', default=None)
+    parser.add_argument('--len_prompt', '-l', type=int, default=32,
+                        help='MAX length of prompt.')
+    parser.add_argument('--max_new_tokens', type=int, default=205,
+                        help='Maximum number of new tokens to generate.')
+    parser.add_argument('--min_new_tokens', type=int, default=195,
+                        help='Minimum number of new tokens to generate.')
+    parser.add_argument('--rep_p', type=float, default=1.05,
+                        help='Repetition penalty.')
     parser.add_argument('--lmbd', type=float, default=0.25,
-                        help='ratio of valid sentences')
+                        help='Ratio of valid sentences.')
     parser.add_argument('--delta', type=float, default=0,
-                        help='logit augmentation for baseline or margin size for lsh and kmeans')
-    parser.add_argument('--sp_mode', type=str,
-                        choices=['lsh', 'kmeans'])
-    parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--sp_dim', type=int, help='number of partitions in the embedding space. default 3 for semstamp and 8 for k-semstamp')
+                        help='Logit augmentation for baseline or margin size for LSH and KMeans.')
+    parser.add_argument('--sp_mode', type=str, choices=['lsh', 'kmeans'],
+                        help='Spatial mode for generation (lsh or kmeans).', default=None)
+    parser.add_argument('--sp_dim', type=int, default=8,
+                        help='Number of partitions in the embedding space. Default is 8.')
     parser.add_argument('--embed_path', type=str,
-                        help='path to precomputed embed for training kmeans')
+                        help='Path to precomputed embed for training KMeans.', default=None)
     parser.add_argument('--cc_path', type=str,
-                        help='kmeans precomputed cluster centers data')
-    parser.add_argument('--train_data', type=str,
-                        help="train_data for kmeans clusters")
+                        help='KMeans precomputed cluster centers data.', default=None)
     pp = pprint.PrettyPrinter(indent=4)
     args = parser.parse_args()
-    pp.pprint(args)
+    pp.pprint(vars(args))  # Debug print for parsed arguments
     return args
 
+def worker(rank, dataset_chunk, output_queue, args, device):
+    """
+    Worker function to process a dataset chunk on a single GPU.
+    """
+    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    model = AutoModelForCausalLM.from_pretrained(args.model, use_safetensors=False)
+    model.to(device)
+    model.eval()
 
-if __name__ == '__main__':
-    args = parse_args()
-    # NOTE: currently, no batching
-    is_offline = os.environ.get('TRANSFORMERS_OFFLINE') is not None and os.environ.get(
-        'TRANSFORMERS_OFFLINE') == '1'
-
-    dataset = load_from_disk(args.data)
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model, local_files_only=is_offline)
-    folder_name = os.path.join(args.data, args.embedder)
-    # block \n
-    bad_words_ids = tokenizer(
-        "\n", return_tensors="pt", add_special_tokens=False).input_ids.to(device='cuda').tolist()
-    
-    gen_config = GenerationConfig.from_pretrained(
-        args.model,
-        return_dict_in_generate=True,
+    gen_config = GenerationConfig(
         max_new_tokens=args.max_new_tokens,
         min_new_tokens=args.min_new_tokens,
         do_sample=True,
         temperature=0.7,
         top_k=0,
         repetition_penalty=args.rep_p,
-        bad_words_ids=bad_words_ids,
-        # top_p=0.96,
-        local_files_only=is_offline
     )
 
-    name = os.path.join(
-        folder_name, f"lmbd={args.lmbd}-{args.sp_mode}-{args.delta}-{args.sp_dim}-len={args.min_new_tokens}-{args.max_new_tokens}-rep_p={args.rep_p}")
-    
     if args.sp_mode == "lsh":
-        lsh_model = SBERTLSHModel(lsh_model_path=args.embedder,
-                                  device=args.device, batch_size=1, lsh_dim=args.sp_dim, sbert_type='base')
-        model = AutoModelForCausalLM.from_pretrained(
-            args.model, local_files_only=is_offline).to(args.device)
-        model.eval()
+        lsh_model = SBERTLSHModel(
+            lsh_model_path=args.embedder, device=device, batch_size=1, lsh_dim=args.sp_dim, sbert_type='base'
+        )
+
         def text_to_generated_text(ex):
             prompt = extract_prompt_from_text(ex['text'], args.len_prompt)
             response = lsh_reject_completion(
-                prompt,
-                model, tokenizer, gen_config,
-                lsh_model, args.sp_dim,
-                lmbd=args.lmbd,
-                device=args.device,
-                margin=args.delta)
+                prompt, model, tokenizer, gen_config, lsh_model, args.sp_dim,
+                lmbd=args.lmbd, device=device, margin=args.delta
+            )
             ex['text'] = response.strip()
             return ex
-    elif 'kmeans' in args.sp_mode:
-        model = AutoModelForCausalLM.from_pretrained(
-            args.model, local_files_only=is_offline).to(args.device)
-        model.eval()
-        # cluster generations if no clusters provided
-        if args.cc_path == None:
-            if args.embed_path == None:
-                embed_path = embed_gen_list(
-                    embedder_path=args.embedder, dataset_path=args.train_data)
-            else:
-                embed_path = args.embed_path
-            gen_embeds = load_embeds(embed_path)
-            cluster_ids, cluster_centers = get_cluster_centers(gen_embeds, args.sp_dim)
-            cc_path = os.path.join(args.train_data, f"cluster_{args.sp_dim}_centers.pt")
-            torch.save(cluster_centers, cc_path)
-        # load cluster centers
-        else:
-            cluster_centers = torch.load(args.cc_path)
-        embedder = SentenceTransformer(args.embedder, device = 'cuda')
+
+    elif args.sp_mode == "kmeans":
+        cluster_centers = torch.load(args.cc_path)
+        # print(f"Load cluster centers: {cluster_centers.shape}")
+
+        embedder = SentenceTransformer(args.embedder, device=device)
+
         def text_to_generated_text(ex):
             prompt = extract_prompt_from_text(ex['text'], args.len_prompt)
-            response= kmeans_reject_completion(
-                prompt=prompt,
-                model=model, tokenizer=tokenizer, gen_config=gen_config,
-                embedder=embedder,
-                cluster_centers=cluster_centers,
-                lmbd=args.lmbd,
-                k_dim=args.sp_dim,
-                margin=args.delta,
-                device=args.device)
+            response = kmeans_reject_completion(
+                prompt=prompt, model=model, tokenizer=tokenizer,gen_config=gen_config, embedder=embedder,
+                cluster_centers=cluster_centers, lmbd=args.lmbd, k_dim=args.sp_dim, margin=args.delta, device=device
+            )
             ex['text'] = response.strip()
             return ex
     else:
         raise NotImplementedError
-   
-    temp_dataset = dataset.map(text_to_generated_text, batch_size=1)
-    os.makedirs(name, exist_ok=True)
-    with open(f"{name}/results.txt", "w") as sys.stdout:
-        new_texts = temp_dataset['text']
-        num_sents = np.sum([len(sent_tokenize(t)) for t in new_texts])
-        new_dataset = Dataset.from_dict(
-            {'text': new_texts}
-        )
-        new_dataset.save_to_disk(name)
+
+    processed_chunk = dataset_chunk.map(text_to_generated_text, batch_size=1)
+    output_queue.put(processed_chunk)
+
+def parallel_generate(args):
+    """
+    Splits the dataset and distributes work across multiple GPUs by index.
+    """
+    dataset = load_from_disk(args.data)
+    num_gpus = torch.cuda.device_count()
+    if num_gpus == 0:
+        raise RuntimeError("No GPUs detected. This script requires at least one GPU.")
+
+    print(f"Detected {num_gpus} GPU(s). Splitting dataset for parallel processing.")
+
+    output_queue = Queue()
+    processes = []
+
+    # Create a process for each GPU and its respective dataset shard
+    for rank in range(num_gpus):
+        device = f"cuda:{rank}"
+        # Shard the dataset by assigning a specific index to the GPU
+        dataset_chunk = dataset.shard(num_shards=num_gpus, index=rank)
+        p = Process(target=worker, args=(rank, dataset_chunk, output_queue, args, device))
+        p.start()
+        processes.append(p)
+
+    all_results = []
+    for _ in processes:
+        all_results.append(output_queue.get())
+
+    for p in processes:
+        p.join()
+
+    # Combine all results into a single dataset
+    merged_dataset = Dataset.from_dict({'text': [item['text'] for chunk in all_results for item in chunk]})
+    output_path = os.path.join(args.data, f"{args.sp_mode}-generated")
+    os.makedirs(output_path, exist_ok=True)
+    merged_dataset.save_to_disk(output_path)
+
+if __name__ == '__main__':
+    args = parse_args()
+    mp.set_start_method('spawn', force=True)
+    parallel_generate(args)

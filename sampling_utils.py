@@ -41,8 +41,8 @@ class SentenceEndCriteria(StoppingCriteria):
 
 
 def discard_final_token_in_outputs(outputs):
-    outputs.sequences = outputs.sequences[:, :-1]  # (bz, seqlen)
-    return outputs
+    # (bz, seqlen)
+    return outputs[:, :-1]
 
 
 def extract_prompt_from_text(text, len_prompt):
@@ -71,9 +71,10 @@ def gen_sent(model, tokenizer, text_ids, gen_config, stopping_criteria):
             stopping_criteria=stopping_criteria,
         )
     outputs = discard_final_token_in_outputs(outputs)
-    new_text_ids = outputs.sequences
+    new_text_ids = outputs
     new_text = tokenizer.decode(
         new_text_ids[0, text_ids.size(1):], skip_special_tokens=True)
+    # print(new_text, new_text_ids)
     return new_text, new_text_ids
 
 def well_formed_sentence(sent, end_sent=False):

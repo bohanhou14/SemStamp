@@ -1,0 +1,3 @@
+[submodule "semstamp-data"]
+	path = semstamp-data
+	url = https://github.com/bohanhou14/semstamp-data.git

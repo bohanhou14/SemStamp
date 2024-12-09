@@ -2,6 +2,7 @@ import argparse
 import os
 from datasets import load_from_disk
 import torch
+import torch.multiprocessing as mp
 from transformers import GenerationConfig
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
@@ -10,7 +11,7 @@ import numpy as np
 from transformers import StoppingCriteriaList
 from collections import defaultdict
 import pickle
-from tqdm import trange
+from tqdm import trange, tqdm
 from kmeans_pytorch import *  # maybe faiss
 import sampling_utils
 from sampling_utils import SentenceEndCriteria, gen_sent
@@ -33,11 +34,9 @@ def kmeans_predict(
     :param device: (torch.device) device [default: 'cpu']
     :return: (torch.tensor) cluster ids
     """
-    print(f'predicting on {device}..')
-
-    if distance == 'euclidean':
-        pairwise_distance_function = pairwise_distance
-    elif distance == 'cosine':
+    # print(f'predicting on {device}..')
+    
+    if distance == 'cosine':
         pairwise_distance_function = pairwise_cosine
     else:
         raise NotImplementedError
@@ -62,48 +61,72 @@ def update_pickle(name, input_to_embed):
         pickle.dump(d, f)
     f.close()
 
-def embed_gen_list(dataset_path, embedder_path, load_batch_size=10000, encode_batch_size=32, device='cuda', padding='max_length'):
-    dataset = load_from_disk(dataset_path)
-    dataset = dataset.map(
-        lambda example, idx: {
-            'text_unique_id': idx
-        },
-        with_indices=True
-    )
+def worker(rank, text_chunk, embedder_path, queue, encode_batch_size):
+    """
+    Worker function to process a text chunk and generate embeddings on a specific GPU.
+    """
+    device = f'cuda:{rank}'
     embedder = SentenceTransformer(embedder_path, device=device)
     embedder = embedder.eval()
+
+    sent_embeds = []
+
+    # Progress bar for each worker
+    with tqdm(total=len(text_chunk), desc=f"Worker {rank} Encoding", position=rank) as pbar:
+        for i in range(0, len(text_chunk), encode_batch_size):
+            batch_texts = text_chunk[i:i + encode_batch_size]
+            batch_embeds = embedder.encode(batch_texts, convert_to_tensor=True)
+            sent_embeds.extend(batch_embeds)
+            pbar.update(len(batch_texts))
+
+    # Put all embeddings into the queue
+    queue.put(sent_embeds)
+
+
+def embed_gen_list(dataset_path, embedder_path, encode_batch_size=32, num_gpus=torch.cuda.device_count()):
+    """
+    Parallelized embedding generation for the dataset with progress bars.
+    """
+    from multiprocessing import Process, Queue
+
+    dataset = load_from_disk(dataset_path)
     texts = dataset['text']
-    sent_embeds = [];  embeds = defaultdict()
+
+    # Total progress bar
+    total_progress = tqdm(total=len(texts), desc="Total Progress", position=num_gpus)
+
+    # Split the dataset into chunks for each GPU
+    text_chunks = [texts[i::num_gpus] for i in range(num_gpus)]
+
+    # Queue to collect embeddings from workers
+    queue = Queue()
+
+    processes = []
+    for rank, text_chunk in enumerate(text_chunks):
+        p = Process(target=worker, args=(rank, text_chunk, embedder_path, queue, encode_batch_size))
+        p.start()
+        processes.append(p)
+
+    # Collect embeddings from workers
+    all_embeds = []
+    while any(p.is_alive() for p in processes) or not queue.empty():
+        while not queue.empty():
+            chunk_embeds = queue.get()
+            all_embeds.extend(chunk_embeds)
+            total_progress.update(len(chunk_embeds))
+
+    total_progress.close()
+
+    for p in processes:
+        p.join()
+
+    # Save embeddings to a single pickle file
     name = os.path.join(dataset_path, "embeds.pkl")
-    initial_load = False
-    # divide texts and paras into batches
-    text_chunks = [texts[i:i + encode_batch_size] for i in range(0, len(texts), encode_batch_size)]
+    with open(name, 'wb') as f:
+        pickle.dump({'text': all_embeds}, f)
 
-    for i in trange(len(text_chunks), desc="encoding chunks"):
-        text_chunk = text_chunks[i]
-        text_embeds = embedder.encode(text_chunk, convert_to_tensor=True); sent_embeds.extend(text_embeds)
-        if (len(sent_embeds) >= load_batch_size and len(sent_embeds) % load_batch_size == 0):
-            embeds['text'] = sent_embeds
-            embeds = dict(embeds)
-            if initial_load == True:
-                update_pickle(name, embeds)
-            else:
-                with open(name, 'wb') as f:
-                    pickle.dump(embeds, f)
-                initial_load = True
-                f.close()
-            del embeds; embeds = defaultdict()
-    # after all dic updates, load the rest < load_batch_size data
-    if (len(sent_embeds) > 0):
-        embeds['text'] = sent_embeds
-        embeds = dict(embeds)
-        if initial_load == True:
-            update_pickle(name, embeds)
-        else:
-            with open(name, 'wb') as f:
-                pickle.dump(embeds, f)
+    print(f"Embeddings saved to {name}")
     return name
-
 
 def get_cluster_mask(curr_cluster_id, k_dim, lmbd):
     rng.manual_seed(curr_cluster_id.item() * hash_key)
@@ -226,6 +249,8 @@ def kmeans_reject_completion(
 
 def pairwise_cosine(data1, data2, device=torch.device('cpu')):
     # transfer to device
+    # print(f"data1: {data1}")
+    # print(f"data2: {data2}")
     data1, data2 = data1.to(device), data2.to(device)
 
     # N*1*M
@@ -256,13 +281,22 @@ def get_cluster_centers(embeds, k_dim, gamma=0.002):
 def load_embeds(embed_path):
     with open(embed_path, 'rb') as f:
         d = pickle.load(f)
-    gen_embeds = torch.stack(d['text']).to('cuda').squeeze()
+    # move all embeddings to the same device
+    for i in range(len(d['text'])):
+        d['text'][i] = d['text'][i].to('cuda')
+    gen_embeds = torch.stack(d['text']).squeeze()
     return gen_embeds
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('data_path', type=str)
     parser.add_argument('embedder_path', type=str)
+    parser.add_argument('sp_dim', type=int, default=3)
     args = parser.parse_args()
-    embed_gen_list(args.data_path, args.embedder_path)
+    mp.set_start_method('spawn', force=True)
+    embed_path = embed_gen_list(args.data_path, args.embedder_path)
+    print(f'Embedding generated at {embed_path}')
+    print("Generating cluster centers..")
+    _, cluster_centers = get_cluster_centers(load_embeds(embed_path), args.sp_dim)
+    torch.save(cluster_centers, f'{args.data_path}/cc.pt')

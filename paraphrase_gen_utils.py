@@ -135,10 +135,10 @@ def gen_bigram_prompt(sent, context, num_beams):
   return prompt
   
 @backoff.on_exception(backoff.expo, openai.RateLimitError)
-def query_openai(prompt):
+def query_openai(client, prompt):
   while True:
     try:
-      response = openai.ChatCompletion.create(
+      response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
           {
@@ -159,10 +159,10 @@ def query_openai(prompt):
 
 # use long context
 @backoff.on_exception(backoff.expo, openai.RateLimitError)
-def query_openai_bigram(prompt):
+def query_openai_bigram(client, prompt):
   while True:
     try:
-      response = openai.ChatCompletion.create(
+      response = client.chat.completions.create(
         model="gpt-3.5-turbo-16k",
         messages=[
           {

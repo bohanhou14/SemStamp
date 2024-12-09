@@ -3,7 +3,9 @@ import argparse
 from tqdm import tqdm, trange
 from datasets import load_from_disk, Dataset
 from nltk import sent_tokenize
+import os
 import torch
+import openai
 import pickle
 from transformers import AutoTokenizer
 # from dipper import DipperParaphraser
@@ -135,52 +137,48 @@ def parrot_paraphrase(parrot, texts, tokenizer, num_beams=10, bigram=False, save
         f.close()
     return output
 
-def paraphrase_openai(data_path, num_beams, bigram=False):
-    dataset = load_from_disk(data_path)
-    texts = dataset['text']
+def paraphrase_openai(client, texts, num_beams, bigram=False):
     new_texts = []
     all_paras = []
-    for text in tqdm(texts, desc="Tokenizer"):
+    MAX_ITER = 10
+    for text in tqdm(texts, desc="Paraphrasing with OpenAI"):
         sents = sent_tokenize(text)
-        para_sents = [] # shape: len(sents) * len(paraphrases) (=10)
-        fail = False # this fail applies to all sents in this text
-    for i in range(len(sents)):
-        if fail:
-            continue # fast forward to next piece of text
-        sent = sents[i]
-        context = sents[:i]
-        if bigram:
-            para_ls = []
+        para_sents = []
+        fail = False
+        for i in range(len(sents)):
+            sent = sents[i]
+            context = sents[:i]
             num_iter = 0
-            prompt = gen_bigram_prompt(sent, context, num_beams)
-        # if insufficient number of para_sents generated, try again
-        while(len(para_ls) < 5):
-            para_str = query_openai_bigram(prompt)
-            # use regex to extract list from string
-            para_ls = extract_list(para_str)
-            num_iter += 1
-            # openai refuses to paraphrase, thendiscard
-            if num_iter == 10:
-                fail = True
-            break
+            if bigram:
+                para_ls = []
+                prompt = gen_bigram_prompt(sent, context, num_beams)
+                # if insufficient number of para_sents generated, try again
+                while(len(para_ls) < 5 and num_iter < MAX_ITER):
+                    para_str = query_openai_bigram(client, prompt)
+                    # use regex to extract list from string
+                    para_ls = extract_list(para_str)
+                    num_iter += 1
+                    # openai refuses to paraphrase, thendiscard
+                if num_iter <= MAX_ITER:
+                    para_sents.append(para_ls)
+                else: 
+                    fail = True
+            else:
+                prompt = gen_prompt(sent, context)
+                para = query_openai(client, prompt)
+                para_sents.append(para)
         if not fail:
-            para_sents.append(para_ls)
-        else:
-            prompt = gen_prompt(sent, context)
-            para = query_openai(prompt)
-            para_sents.append(para)
-    if not fail:
-        new_texts.append(sents)
-        all_paras.append(para_sents) 
+            new_texts.append(sents)
+            all_paras.append(para_sents) 
     
-    save_path = data_path + f'-openai-num_beams={num_beams}-bigram={bigram}'
+    save_path = args.data_path + f'-openai-num_beams={num_beams}-bigram={bigram}'
     Dataset.from_dict({'text': new_texts, 'para_text': all_paras}).save_to_disk(save_path)
     return new_texts, all_paras
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('data_path', type=str)
-    parser.add_argument('--model_path', type=str, default='facebook/opt-1.3b')
+    parser.add_argument('--model_path', type=str, default='AbeHou/opt-1.3b-semstamp')
     parser.add_argument('--bsz', type=int, default=-1)
     parser.add_argument('--paraphraser', type=str,
                         default="pegasus", choices=['pegasus', 
@@ -215,8 +213,14 @@ if __name__ == '__main__':
     elif args.paraphraser == 'pegasus':
         pegasus_paraphrase(texts, tokenizer, num_beams = args.num_beams, bert_threshold=args.bert_threshold, bsz=args.bsz)
     elif args.paraphraser == 'openai':
-        new_texts, paras = paraphrase_openai(texts, args.num_beams, bigram=False)
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        new_texts, paras = paraphrase_openai(client, texts, args.num_beams, bigram=False)
     elif args.paraphraser == 'openai-bigram':
-        new_texts, paras = paraphrase_openai(texts, args.num_beams, bigram=True)
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        new_texts, paras = paraphrase_openai(client, texts, args.num_beams, bigram=True)
     else:
         raise NotImplementedError

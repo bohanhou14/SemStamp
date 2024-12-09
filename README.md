@@ -75,7 +75,7 @@ python detection.py semstamp-data/c4-ksemstamp-pegasus/bigram=False --detection_
 ```
 
 ## Custom Generations
-Please follow the following guides.
+Please read the following guides.
 
 ## SemStamp 
 The high-level pipeline of SemStamp is outlined below
@@ -144,13 +144,13 @@ Steps 1 and 2 are the same.
   ```
 
 5. detection:
-    ```
-    python detection.py path_to_your_generation --detection_mode kmeans --sp_dim 8 --embedder output_dir_to_your_embedder --cc_path to_your_kmeans_clusters
-    ```
-    Example usage to replicate results in k-SemStamp paper:
-    ```
-    python detection.py semstamp-data/c4-ksemstamp-pegasus/bigram=False --detection_mode kmeans --sp_dim 8 --embedder AbeHou/SemStamp-c4-sbert --cc_path centroids/c4-cluster_8_centers.pt
-    ```
+  ```
+  python detection.py path_to_your_generation --detection_mode kmeans --sp_dim 8 --embedder output_dir_to_your_embedder --cc_path to_your_kmeans_clusters
+  ```
+  Example usage to replicate results in k-SemStamp paper:
+  ```
+  python detection.py semstamp-data/c4-ksemstamp-pegasus/bigram=False --detection_mode kmeans --sp_dim 8 --embedder AbeHou/SemStamp-c4-sbert --cc_path centroids/c4-cluster_8_centers.pt
+  ```
     
 
 

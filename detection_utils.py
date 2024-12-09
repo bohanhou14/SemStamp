@@ -72,9 +72,9 @@ def detect_lsh(sents, lsh_model, lmbd, lsh_dim, cutoff=None):
     n_test_sent = n_sent - 1  # exclude the prompt and the ending
     num = n_watermark - lmbd * (n_test_sent)
     denom = np.sqrt((n_test_sent) * lmbd * (1-lmbd))
-    print(f'n_watermark: {n_watermark}, n_test_sent: {n_test_sent}')
+    # print(f'n_watermark: {n_watermark}, n_test_sent: {n_test_sent}')
     zscore = num / denom
-    print(f"zscore: {zscore}")
+    # print(f"zscore: {zscore}")
     return zscore
 
 def get_roc_metrics(labels, preds):

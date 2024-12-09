@@ -70,7 +70,7 @@ For instance, the pegasus results:
 python load_c4.py
 2. (MUST be in GPU environment), for example:
 python detection.py semstamp-data/c4-semstamp-pegasus-parrot/semstamp-pegasus-bigram=False --detection_mode lsh --sp_dim 3 --embedder AbeHou/SemStamp-c4-sbert
-python detection.py semstamp-data/c4-ksemstamp-pegasus/bigram=False --detection_mode kmeans --sp_dim 3 --embedder AbeHou/SemStamp-c4-sbert --cc_path data/c4-train/cc.pt
+python detection.py semstamp-data/c4-ksemstamp-pegasus/bigram=False --detection_mode kmeans --sp_dim 8 --embedder AbeHou/SemStamp-c4-sbert --cc_path centroids/c4-cluster_8_centers.pt --human_text semstamp-data/original-c4-texts
 3. Feel free to run detections on other data from semstamp-data
 ```
 

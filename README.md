@@ -63,6 +63,20 @@ This is the repo for [SemStamp: A Semantic Watermark with Paraphrastic Robustnes
 
 SemStamp is a semantic watermark on Large Language Model(LLM) text generations to allow generated texts to be detected. SemStamp utilizes Locality-Sensitive Hashing (LSH) to partition the high-dimensional embedding space to produce sentence generations with LSH-hashes that follow a pseudo-randomly controlled sequence. During detection time, the algorithm analyzes the LSH-hashes of input sentences to see if they constitute a pseudo-random sequence, subsequently applying a z-test on the pseudo-randomness to determine if the text is watermarked. k-SemStamp is a simple yet effective variant of SemStamp, which has a similar setup but uses k-means clustering to partition the embedding space.
 
+## Reproduce paper results
+For instance, the pegasus results:
+```
+1. load human subset
+python load_c4.py
+2. (MUST be in GPU environment), for example:
+python detection.py semstamp-data/c4-semstamp-pegasus-parrot/semstamp-pegasus-bigram=False --detection_mode lsh --sp_dim 3 --embedder AbeHou/SemStamp-c4-sbert
+python detection.py semstamp-data/c4-ksemstamp-pegasus/bigram=False --detection_mode kmeans --sp_dim 3 --embedder AbeHou/SemStamp-c4-sbert --cc_path data/c4-train/cc.pt
+3. Feel free to run detections on other data from semstamp-data
+```
+
+## Custom Generations
+Please follow the following guides.
+
 ## SemStamp 
 The high-level pipeline of SemStamp is outlined below
 ### Generation
@@ -74,7 +88,7 @@ The high-level pipeline of SemStamp is outlined below
 2. Detect the sentences to see if $LSH(s_t) \in valid(s_{t-1})$, $t=2,...$
 ### Sample usage
 1. create data/ directory and load c4_data, which would also create the human subset for evaluation: 
-`python load_c4.py`
+```python load_c4.py```
 2. (Optional) fine-tune the sentence embedder or use a fine-tuned sentence embedder at AbeHou/SemStamp-booksum-sbert and AbeHou/SemStamp-c4-sbert
 - fine-tune procedure: 
 ```

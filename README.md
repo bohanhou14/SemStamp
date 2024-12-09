@@ -46,6 +46,10 @@ To cite
 ```
 
 ## Installation
+Recursive clone:
+```
+git clone --recurse-submodules https://github.com/bohanhou14/SemStamp.git
+```
 (Recommended) create a virtual environment, and then:
 ```
 pip install -r requirements.txt
@@ -69,7 +73,10 @@ For instance, the pegasus results:
 1. load human subset
 python load_c4.py
 2. (MUST be in GPU environment), for example:
-python detection.py semstamp-data/c4-semstamp-pegasus-parrot/semstamp-pegasus-bigram=False --detection_mode lsh --sp_dim 3 --embedder AbeHou/SemStamp-c4-sbert
+python detection.py semstamp-data/c4-semstamp-pegasus-parrot/semstamp-pegasus-bigram=False --detection_mode lsh --sp_dim 3 --embedder AbeHou/SemStamp-c4-sbert --human_text semstamp-data/original-c4-texts 
+
+python detection.py semstamp-data/c4-semstamp-pegasus-parrot/semstamp-pegasus-bigram=True --detection_mode lsh --sp_dim 3 --embedder AbeHou/SemStamp-c4-sbert --human_text semstamp-data/original-c4-texts 
+
 python detection.py semstamp-data/c4-ksemstamp-pegasus/bigram=False --detection_mode kmeans --sp_dim 8 --embedder AbeHou/SemStamp-c4-sbert --cc_path centroids/c4-cluster_8_centers.pt --human_text semstamp-data/original-c4-texts
 3. Feel free to run detections on other data from semstamp-data
 ```
@@ -88,6 +95,7 @@ The high-level pipeline of SemStamp is outlined below
 2. Detect the sentences to see if $LSH(s_t) \in valid(s_{t-1})$, $t=2,...$
 ### Sample usage
 1. create data/ directory and load c4_data, which would also create the human subset for evaluation: 
+
 ```python load_c4.py```
 2. (Optional) fine-tune the sentence embedder or use a fine-tuned sentence embedder at AbeHou/SemStamp-booksum-sbert and AbeHou/SemStamp-c4-sbert
 - fine-tune procedure: 
@@ -113,6 +121,7 @@ python build_subset.py data/c4-val --n 1000
 python sampling.py data/c4-val-1000 --model AbeHou/opt-1.3b-semstamp \
     --embedder OUTPUT_DIR_TO_YOUR_EMBEDDER --sp_mode lsh \
     --sp_dim 3 --delta 0.02
+
 # note: it's recommended to use AbeHou/opt-1.3b-semstamp, which is fine-tuned with cross-entropy loss 
 # to favor generations of shorter average sentence length, 
 # so that the effect of watermarks is more pronounced.

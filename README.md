@@ -1,5 +1,10 @@
 # Official Repo for SemStamp (NAACL24) and k-SemStamp (ACL24)
 
+## Updates (Dec 7 2024)
+1. SemStamp and k-SemStamp now both support multi-GPU implementations.
+2. Added more instructions to clarify usage
+3. Integrated data repository with the original data from the paper.
+
 To cite
 ```
 @inproceedings{hou-etal-2023-semstamp,
@@ -134,10 +139,7 @@ Steps 1 and 2 are the same.
     ```
     
 
-## Updates (Dec 7 2024)
-1. SemStamp and k-SemStamp now both support multi-GPU implementations.
-2. Added more instructions to clarify usage
-3. Integrated data repository with the original data from the paper.
+
 
 
 
